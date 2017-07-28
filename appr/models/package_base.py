@@ -7,8 +7,8 @@ import re
 
 import semantic_version
 
-from appr.exception import (
-    InvalidRelease, PackageAlreadyExists, PackageReleaseNotFound, raise_package_not_found)
+from appr.exception import (InvalidRelease, InvalidUsage, PackageAlreadyExists,
+                            PackageReleaseNotFound, raise_package_not_found)
 from appr.models.blob_base import BlobBase
 from appr.semver import last_version, select_version
 
@@ -163,7 +163,7 @@ class PackageBase(object):
         if len(manifests) != 1:
             raise InvalidUsage("media-type non specified: [%s]" % ','.join(manifests))
         else:
-            media_type = manifests[0]
+            return manifests[0]
 
     @classmethod
     def get(cls, package, release, media_type):
@@ -174,8 +174,6 @@ class PackageBase(object):
         returns: (package blob(targz) encoded in base64, release)
         """
         p = cls(package, release)
-        if media_type == "-":
-            media_type = cls._find_media_type(package, release)
         p.pull(release, media_type)
         return p
 
@@ -193,9 +191,7 @@ class PackageBase(object):
                 raise InvalidRelease(e.message, {"release": release_query})
 
     def pull(self, release_query=None, media_type=None):
-        media_type = get_media_type(media_type)
-        if media_type is None:
-            media_type = self.media_type
+        # Find release
         if release_query is None:
             release_query = self.release
         package = self.package
@@ -205,6 +201,12 @@ class PackageBase(object):
                                                                                      package),
                                          {"package": package,
                                           "release_query": release_query})
+        # Find media_type
+        if media_type == "-":
+            media_type = self._find_media_type(package, str(release))
+        media_type = get_media_type(media_type)
+        if media_type is None:
+            media_type = self.media_type
 
         self.data = self._fetch(package, str(release), media_type)
         return self
