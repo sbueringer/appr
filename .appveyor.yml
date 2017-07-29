@@ -2,36 +2,28 @@ image:
 - Visual Studio 2015
 environment:
   global:
+    CYG_ROOT: C:/cygwin64
     CMD_IN_ENV: "cmd /E:ON /V:ON /C .\\appveyor\\run_with_env.cmd"
   matrix:
-
-    # For Python versions available on Appveyor, see
-    # http://www.appveyor.com/docs/installed-software#python
-    # The list here is complete (excluding Python 2.6, which
-    # isn't covered by this document) at the time of writing.
-
-    # - PYTHON: "C:\\Python27"
-    # - PYTHON: "C:\\Python33"
-    # - PYTHON: "C:\\Python34"
-    # - PYTHON: "C:\\Python35"
     - PYTHON: "C:\\Python27-x64"
       BIN_NAME: appr-%APPVEYOR_REPO_TAG_NAME%-win-x64
       PYTHON_ARCH: "64"
       PYTHON_VERSION: "2.7.x"
-    # - PYTHON: "C:\\Python33-x64"
-    # - PYTHON: "C:\\Python34-x64"
-    # - PYTHON: "C:\\Python35-x64"
 
 install:
-  - ECHO "Installed SDKs:"
+  - ECHO "Installed SDKs:"t
   - ps: "ls \"C:/Program Files/Microsoft SDKs/Windows\""
 
-  - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
+  - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%CYG_ROOT%\\bin;%PATH%"
+  - "echo %PATH%"
+  - cmd: '%CYG_ROOT%/bin/bash --login -lc "which g++"'
+  - ps: 'Get-ChildItem -Path C:\cygwin64 -Filter g++.exe -Recurse -ErrorAction SilentlyContinue -Force'
+
   - "pip install setuptools>=6.0"
   - "python --version"
   - "git clone https://github.com/google/jsonnet.git"
   - "cd jsonnet"
-  - "python setup.py build --compiler=mingw64"
+  - "python setup.py build"
   # # Upgrade to the latest version of pip to avoid it displaying warnings
   # # about it being out of date.
   # - "pip install --disable-pip-version-check --user --upgrade pip"

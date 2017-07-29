@@ -1,0 +1,58 @@
+image:
+- Visual Studio 2017
+environment:
+  global:
+    CYG_ROOT: C:/cygwin64
+    #CYG_ROOT: C:/msys64/usr
+    CMD_IN_ENV: "cmd /E:ON /V:ON /C .\\appveyor\\run_with_env.cmd"
+  matrix:
+    - PYTHON: "C:\\Python27-x64"
+      PYTHON_VERSION: "2.7.x"
+      PYTHON_ARCH: "64"
+      BIN_NAME: appr-%APPVEYOR_REPO_TAG_NAME%-win-x64
+
+install:
+  - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
+  - ps: 'wget "https://download.microsoft.com/download/7/9/6/796EF2E4-801B-4FC4-AB28-B59FBF6D907B/VCForPython27.msi" -outfile "VCForPython27.msi"'
+  - ps: "Start-Process msiexec.exe -Wait -ArgumentList '/I C:\\projects\\appr\\VCForPython27.msi /quiet'"
+  - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
+  - cmd: '%CYG_ROOT%/bin/bash --login -lc "curl https://bootstrap.pypa.io/get-pip.py | python"'
+  - cmd: '%CYG_ROOT%/bin/bash --login -lc "g++ --version"'
+  - cmd: '%CYG_ROOT%/bin/bash --login -lc "python --version"'
+  - cmd: '%CYG_ROOT%/bin/bash --login -lc "which g++"'
+  - cmd: '%CYG_ROOT%/bin/bash --login -lc "which python"'
+  - cmd: '%CYG_ROOT%/bin/bash --login -lc "which pip"'
+  - cmd: '%CYG_ROOT%/bin/bash --login -lc "cd /usr/lib/python2.7/bootloader && python ./waf distclean all"'
+  - cmd: '%CYG_ROOT%/bin/bash --login -lc "pip install -U wheel"'
+  #- cmd: '%CYG_ROOT%/bin/bash --login -lc "pip install --disable-pip-version-check --user --upgrade pip"'
+#  - cmd: '%CYG_ROOT%/bin/bash --login -lc "cd $APPVEYOR_BUILD_FOLDER && pip install jsonnet"'
+  - cmd: '%CYG_ROOT%/bin/bash --login -lc "curl http://peak.telecommunity.com/dist/ez_setup.py | python"'
+  #- cmd: '%CYG_ROOT%/bin/bash --login -lc "cd $APPVEYOR_BUILD_FOLDER && git clone https://github.com/google/jsonnet.git && cd jsonnet && make"'
+
+  - cmd: '%CYG_ROOT%/bin/bash --login -lc "cd $APPVEYOR_BUILD_FOLDER && pip install -U pyinstaller && pip install -r requirements_dev.txt && pip install -e ."'
+  - cmd: '%CYG_ROOT%/bin/bash --login -lc "pyinstaller --onefile bin/appr --hidden-import gunicorn.glogging --hidden-import gunicorn.workers.gthread --hidden-import gunicorn.workers"'
+
+build: off
+
+
+test_script: []
+  # Run the project tests
+  #- "py.test --cov=appr --cov-report=html --cov-report=term-missing  --verbose tests"
+
+after_test:
+  # If tests are successful, create binary packages for the project.
+  - "pyinstaller --add-data appr/jsonnet;appr/jsonnet --onefile bin/appr"
+  - ps: "ls dist"
+  - "copy dist\\appr.exe %BIN_NAME%.exe"
+  - "mkdir registry"
+  - "copy dist\\appr.exe registry\\appr.exe"
+  - "7z a registry-%BIN_NAME%-helm-plugin.zip registry\\*.*"
+  - ps: "ls dist"
+  - ps: "ls registry"
+  - "C:\\projects\\appr\\registry\\appr.exe version quay.io"
+
+artifacts:
+  # Archive the generated packages in the ci.appveyor.com build report.
+  - path: "%BIN_NAME%.exe"
+  - path: registry-%BIN_NAME%-helm-plugin.zip
+    type: zip
